@@ -5,9 +5,9 @@
 
 ///////////////////////////SETTINGS/////////////////////////////////////////////////////
 
-#define HEIGHT 10
-#define WIDTH 20
-const int FPS_RATE = 10;
+#define HEIGHT 70
+#define WIDTH 60
+const int FPS_RATE = 15;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -24,7 +24,8 @@ void drawBlock(int, int, int, int, int);
 void boardBoundaryDrawer(int, int, int);
 void fillBoard(int, int, int);
 void testPrintCurrentPiece(int);
-void drawFigure(void);
+void drawFigure(int);
+//void drawRotatedFigure(int, int, int, int);
 void moveFigure(void);
 void moveLeft(void);
 void moveRight(void);
@@ -34,14 +35,22 @@ int checkRightCollision(void);
 void figureToGameBoard(void);
 void gameOver(void);
 void boardDrawer(void);
+void gameMove(int*, int*, int*, int*);
+void isFigureOnScreen(int);
+void whichRotation(int);
+void rotate(int, int*);
 
 
+/* MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN */
 
 int main(int argc, char* argv[])
 {
     int posWidth, posHeight, blockSide, centerTheBoard_X, centerTheBoard_Y, /* positioning squares */
     figureOnScreen = 0, /*if figure is on the screen then 1, else 0*/
-    counter = 0;
+    prevRotation = 0, /* which of 4 variants of the figure is on the screen */
+    counter = 0,
+    whichFigure = 0,
+    key;
     
     srand(time(0));
     
@@ -61,49 +70,57 @@ int main(int argc, char* argv[])
     centerTheBoard_X = (screenWidth() - blockSide * WIDTH) / 2;
     centerTheBoard_Y = (screenHeight() - blockSide * HEIGHT) / 2;
     
+    
     while(1)
     {
-        if (isKeyDown(SDLK_ESCAPE))
-            exit(3);
-        if (isKeyDown(SDLK_LEFT))
-            if (!checkLeftCollision())
-                moveLeft();
-        if (isKeyDown(SDLK_RIGHT))
-            if (!checkRightCollision())
-                moveRight();
-        if (isKeyDown(SDLK_DOWN))
-            if (!checkCollision())
-                moveFigure();
-        if (isKeyDown(SDLK_SPACE))
-            boardDrawer();
+
+        
         screenCleaner();
         boardBoundaryDrawer(blockSide, centerTheBoard_X, centerTheBoard_Y);
-        if (counter % (FPS_RATE / 2) == 0)
-        {
-            counter %= FPS_RATE / 2;
-            if (figureOnScreen == 0)
-            {
-                drawFigure();
-                if (checkCollision())
-                    gameOver();
-                figureOnScreen = 1;
-            }
-            else if (checkCollision())
-            {
-                figureToGameBoard();
-                figureOnScreen = 0;
-            }
-            else
-                moveFigure();
-        }
+        
+        gameMove(&figureOnScreen, &counter, &whichFigure, &prevRotation);
+
+        //isFigureOnScreen(figureOnScreen); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
+        
         fillBoard(blockSide, centerTheBoard_X, centerTheBoard_Y);
         updateScreen();
+        
+        if ((key = pollkey()) != -1) //checks if any key has been pressed, if no, then false
+        {
+            if (key == SDLK_ESCAPE)
+                exit(3);
+            else if (key == SDLK_LEFT)
+            {
+                if (!checkLeftCollision())
+                    moveLeft();
+            }
+            else if (key == SDLK_RIGHT)
+            {
+                if (!checkRightCollision())
+                    moveRight();
+            }
+            else if (key == SDLK_DOWN)
+            {
+                if (!checkCollision())
+                    moveFigure();
+            }
+            else if (key == SDLK_UP)
+            {
+                boardDrawer();
+            }
+            else if (key == SDLK_SPACE)
+            {
+                rotate (whichFigure, &prevRotation);
+            }
+        }
         SDL_Delay(1000 / FPS_RATE);
         counter++;
     }
     return 0;
 }
 
+
+/* MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN */
 
 
 void screenCleaner(void)
@@ -139,17 +156,16 @@ void fillBoard(int blockSide, int centerTheBoard_X, int centerTheBoard_Y)
 }
 
 
-void drawFigure(void)
+void drawFigure(int whichFigure)
 {
-    int i, j, /* counters */
-    whichFigure = rand() % 7; /*for selecting a figure*/
+    int i, j; /* counters */
 
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            if (pieces[whichFigure][1][i][j])
-                figureBoard[i][WIDTH/2 - 1 + j] = pieces[whichFigure][1][i][j];
+            if (pieces[whichFigure][0][i][j])
+                figureBoard[i][WIDTH/2 - 1 + j] = pieces[whichFigure][0][i][j];
             
-    testPrintCurrentPiece(whichFigure);
+    //testPrintCurrentPiece(whichFigure); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
 }
 
 
@@ -286,8 +302,112 @@ void boardDrawer(void)
 }
 
 
+void gameMove(int* figureOnScreen, int* counter, int* whichFigure, int* prevRotation)
+{
+    if (*counter % (FPS_RATE / 2) == 0)
+    {
+        *counter %= FPS_RATE / 2;
+        if (*figureOnScreen == 0)
+        {
+            *whichFigure = rand() % 7; /*for selecting a figure*/
+            drawFigure(*whichFigure);
+            if (checkCollision())
+                gameOver();
+            *prevRotation = 0;
+            *figureOnScreen = 1;
+        }
+        else if (checkCollision())
+        {
+            figureToGameBoard();
+            *figureOnScreen = 0;
+        }
+        else
+            moveFigure();
+    }
+}
+
+
+void rotate(int whichFigure, int* prevRotation)
+{
+    int i, j, /* counters */
+    prevX, prevY,
+    postX, postY,
+    deltaX, deltaY,
+    whereX, whereY,
+    postRotation;
+    
+    
+    postRotation = *prevRotation + 1;
+    postRotation %= 4; /* 4 is a number of variants for each figure */
+    //whichRotation(postRotation); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
+    
+    
+    for (i = 0; i < HEIGHT; i++)
+        for (j = 0; j < WIDTH; j++)
+            if (figureBoard[i][j] == 2)
+            {
+                whereX = j;
+                whereY = i;
+                i = HEIGHT;
+                j = WIDTH;
+            }
+    
+    
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+        {
+            if (pieces[whichFigure][*prevRotation][i][j] == 2)
+            {
+                prevX = j;
+                prevY = i;
+            }
+            if (pieces[whichFigure][postRotation][i][j] == 2)
+            {
+                postX = j;
+                postY = i;
+            }
+        }
+    deltaX = postX - prevX;
+    deltaY = postY - prevY;
+    //drawRotatedFigure(whereX - deltaX, whereY - deltaY, whichFigure, postRotation);
+    
+    whereX = whereX - prevX;
+    whereY = whereY - prevY;
+    
+    for (i = 0; i < HEIGHT; i++)
+        for (j = 0; j < WIDTH; j++)
+            if (figureBoard[i][j])
+                figureBoard[i][j] = 0;
+    
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+        {
+            //if (pieces[whichFigure][postRotation][i][j])
+                figureBoard[whereY - deltaY + i][whereX - deltaX + j] = pieces[whichFigure][postRotation][i][j];
+        }
+    
+    
+    
+    *prevRotation = postRotation;
+}
+
+
 void testPrintCurrentPiece(int whichFigure) {
     printf("=====WHICH FIGURE=====\n");
     printf("Current figure: %d\n", whichFigure);
     printf("=====WHICH FIGURE=====\n");
+}
+
+
+void isFigureOnScreen(int figureOnScreen) {
+    printf("=====IS FIGURE ON SCREEN=====\n");
+    printf("FigureOnScreen: %d\n", figureOnScreen);
+    printf("=====IS FIGURE ON SCREEN=====\n");
+}
+
+
+void whichRotation(int rotation) {
+    printf("=====ROTATION=====\n");
+    printf("Rotation: %d\n", rotation);
+    printf("=====ROTATION=====\n");
 }
