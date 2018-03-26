@@ -5,8 +5,8 @@
 
 ///////////////////////////SETTINGS/////////////////////////////////////////////////////
 
-#define HEIGHT 70
-#define WIDTH 60
+#define HEIGHT 20
+#define WIDTH 10
 const int FPS_RATE = 15;
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -25,7 +25,6 @@ void boardBoundaryDrawer(int, int, int);
 void fillBoard(int, int, int);
 void testPrintCurrentPiece(int);
 void drawFigure(int);
-//void drawRotatedFigure(int, int, int, int);
 void moveFigure(void);
 void moveLeft(void);
 void moveRight(void);
@@ -45,12 +44,13 @@ void rotate(int, int*);
 
 int main(int argc, char* argv[])
 {
-    int posWidth, posHeight, blockSide, centerTheBoard_X, centerTheBoard_Y, /* positioning squares */
+    int posWidth, posHeight, blockSide, centerTheBoard_X, centerTheBoard_Y, /* positioning squares and the board */
     figureOnScreen = 0, /*if figure is on the screen then 1, else 0*/
-    prevRotation = 0, /* which of 4 variants of the figure is on the screen */
+    rotation = 0, /* which of 4 variants of the figure is on the screen */
     counter = 0,
-    whichFigure = 0,
-    key;
+    whichFigure = 0, /* which of the figures is on the screen */
+    score = 0, /* actual score of a player */
+    key; /* which key is pressed */
     
     srand(time(0));
     
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
         screenCleaner();
         boardBoundaryDrawer(blockSide, centerTheBoard_X, centerTheBoard_Y);
         
-        gameMove(&figureOnScreen, &counter, &whichFigure, &prevRotation);
+        gameMove(&figureOnScreen, &counter, &whichFigure, &rotation);
 
         //isFigureOnScreen(figureOnScreen); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
         
@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
             }
             else if (key == SDLK_SPACE)
             {
-                rotate (whichFigure, &prevRotation);
+                rotate (whichFigure, &rotation);
             }
         }
         SDL_Delay(1000 / FPS_RATE);
@@ -160,8 +160,8 @@ void drawFigure(int whichFigure)
 {
     int i, j; /* counters */
 
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
+    for (i = 0; i < 4; i++) /* 4 is a piece side */
+        for (j = 0; j < 4; j++) /* 4 is a piece side */
             if (pieces[whichFigure][0][i][j])
                 figureBoard[i][WIDTH/2 - 1 + j] = pieces[whichFigure][0][i][j];
             
@@ -330,12 +330,13 @@ void gameMove(int* figureOnScreen, int* counter, int* whichFigure, int* prevRota
 void rotate(int whichFigure, int* prevRotation)
 {
     int i, j, /* counters */
-    prevX, prevY,
-    postX, postY,
-    deltaX, deltaY,
-    whereX, whereY,
-    postRotation;
-    
+    prevX, prevY, /* position of '2' in a piece before rotation */
+    postX, postY, /* position of '2' in a rotated piece */
+    deltaX, deltaY, /* differences between position of '2' integer in pieces */
+    whereX, whereY, /* top left corner of a rotated piece to draw */
+    maxX = 0, maxY = 0, /* maximum x and y !!!indexes!!! in a rotated piece willed with non-zero */
+    postRotation, /* index of a rotation of a piece after that rotation */
+    collision = 0; /* detector for collisions caused by rotation */
     
     postRotation = *prevRotation + 1;
     postRotation %= 4; /* 4 is a number of variants for each figure */
@@ -353,8 +354,8 @@ void rotate(int whichFigure, int* prevRotation)
             }
     
     
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
+    for (i = 0; i < 4; i++) /* 4 is a piece side */
+        for (j = 0; j < 4; j++) /* 4 is a piece side */
         {
             if (pieces[whichFigure][*prevRotation][i][j] == 2)
             {
@@ -374,21 +375,41 @@ void rotate(int whichFigure, int* prevRotation)
     whereX = whereX - prevX;
     whereY = whereY - prevY;
     
-    for (i = 0; i < HEIGHT; i++)
-        for (j = 0; j < WIDTH; j++)
-            if (figureBoard[i][j])
-                figureBoard[i][j] = 0;
-    
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-        {
-            //if (pieces[whichFigure][postRotation][i][j])
-                figureBoard[whereY - deltaY + i][whereX - deltaX + j] = pieces[whichFigure][postRotation][i][j];
-        }
+    /* collision detector */
+    for (i = 0; i < 4; i++) /* 4 is a piece side */
+        for (j = 0; j < 4; j++) /* 4 is a piece side */
+                if (gameBoard[whereY - deltaY + i][whereX - deltaX + j])
+                    collision = 1;
     
     
+    /* maxX and maxY detector */
+    for (i = 0; i < 4; i++) /* 4 is a piece side */
+        for (j = 0; j < 4; j++) /* 4 is a piece side */
+            if (pieces[whichFigure][postRotation][i][j])
+            {
+                if (maxX < j)
+                    maxX = j;
+                if (maxY < i)
+                    maxY = i;
+            }
     
+    
+    
+    if (collision == 0 && whereX >= 0 && whereX <= (WIDTH - maxX - 1) && whereY >= 0 && whereY <= (HEIGHT - maxY - 1))
+    {
+        for (i = 0; i < HEIGHT; i++)
+            for (j = 0; j < WIDTH; j++)
+                if (figureBoard[i][j])
+                    figureBoard[i][j] = 0;
+        
+        for (i = 0; i < 4; i++) /* 4 is a piece side */
+            for (j = 0; j < 4; j++) /* 4 is a piece side */
+            {
+                //if (pieces[whichFigure][postRotation][i][j])
+                    figureBoard[whereY - deltaY + i][whereX - deltaX + j] = pieces[whichFigure][postRotation][i][j];
+            }
     *prevRotation = postRotation;
+    }
 }
 
 
