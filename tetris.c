@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
             {
                 boardDrawer();
             }
-            else if (key == SDLK_SPACE)
+            else if (key == SDLK_SPACE && figureOnScreen == 1)
             {
                 rotate (whichFigure, &rotation);
             }
@@ -372,13 +372,13 @@ void rotate(int whichFigure, int* prevRotation)
     deltaY = postY - prevY;
     //drawRotatedFigure(whereX - deltaX, whereY - deltaY, whichFigure, postRotation);
     
-    whereX = whereX - prevX;
-    whereY = whereY - prevY;
+    whereX = whereX - prevX - deltaX;
+    whereY = whereY - prevY - deltaY;
     
     /* collision detector */
     for (i = 0; i < 4; i++) /* 4 is a piece side */
         for (j = 0; j < 4; j++) /* 4 is a piece side */
-                if (gameBoard[whereY - deltaY + i][whereX - deltaX + j])
+                if (gameBoard[whereY + i][whereX + j])
                     collision = 1;
     
     
@@ -394,7 +394,6 @@ void rotate(int whichFigure, int* prevRotation)
             }
     
     
-    
     if (collision == 0 && whereX >= 0 && whereX <= (WIDTH - maxX - 1) && whereY >= 0 && whereY <= (HEIGHT - maxY - 1))
     {
         for (i = 0; i < HEIGHT; i++)
@@ -405,13 +404,14 @@ void rotate(int whichFigure, int* prevRotation)
         for (i = 0; i < 4; i++) /* 4 is a piece side */
             for (j = 0; j < 4; j++) /* 4 is a piece side */
             {
-                //if (pieces[whichFigure][postRotation][i][j])
-                    figureBoard[whereY - deltaY + i][whereX - deltaX + j] = pieces[whichFigure][postRotation][i][j];
+                if (pieces[whichFigure][postRotation][i][j])
+                    figureBoard[whereY + i][whereX + j] = pieces[whichFigure][postRotation][i][j];
             }
     *prevRotation = postRotation;
     }
 }
 
+/* TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS */
 
 void testPrintCurrentPiece(int whichFigure) {
     printf("=====WHICH FIGURE=====\n");
