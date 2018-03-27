@@ -5,9 +5,10 @@
 
 ///////////////////////////SETTINGS/////////////////////////////////////////////////////
 
-#define HEIGHT 20
-#define WIDTH 10
-const int FPS_RATE = 15;
+#define HEIGHT 10
+#define WIDTH 20
+const int FPS_RATE = 60;
+const int MOVE_FREQUENCY = 30; /* every how many frames occurs an automatic movement of the figure */
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +26,7 @@ void boardBoundaryDrawer(int, int, int);
 void fillBoard(int, int, int);
 void testPrintCurrentPiece(int);
 void drawFigure(int);
+//void scoreDrawer(char*);
 void moveFigure(void);
 void moveLeft(void);
 void moveRight(void);
@@ -38,7 +40,7 @@ void gameMove(int*, int*, int*, int*);
 void isFigureOnScreen(int);
 void whichRotation(int);
 void rotate(int, int*);
-
+void fullLineDestroyer(void);
 
 /* MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN   MAIN */
 
@@ -49,8 +51,9 @@ int main(int argc, char* argv[])
     rotation = 0, /* which of 4 variants of the figure is on the screen */
     counter = 0,
     whichFigure = 0, /* which of the figures is on the screen */
-    score = 0, /* actual score of a player */
+    //score = 0, /* actual score of a player */
     key; /* which key is pressed */
+    //char scoreTXT[6];
     
     srand(time(0));
     
@@ -73,16 +76,16 @@ int main(int argc, char* argv[])
     
     while(1)
     {
-
-        
         screenCleaner();
         boardBoundaryDrawer(blockSide, centerTheBoard_X, centerTheBoard_Y);
         
         gameMove(&figureOnScreen, &counter, &whichFigure, &rotation);
-
+        fullLineDestroyer();
         //isFigureOnScreen(figureOnScreen); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
         
         fillBoard(blockSide, centerTheBoard_X, centerTheBoard_Y);
+        //sprintf(scoreTXT, "%d", score);
+        //scoreDrawer(&scoreTXT);
         updateScreen();
         
         if ((key = pollkey()) != -1) //checks if any key has been pressed, if no, then false
@@ -106,7 +109,8 @@ int main(int argc, char* argv[])
             }
             else if (key == SDLK_UP)
             {
-                boardDrawer();
+                isFigureOnScreen(whichFigure);
+                whichRotation(rotation);
             }
             else if (key == SDLK_SPACE && figureOnScreen == 1)
             {
@@ -167,6 +171,13 @@ void drawFigure(int whichFigure)
             
     //testPrintCurrentPiece(whichFigure); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
 }
+
+
+/*void scoreDrawer(char* score)
+{
+    textout(20, 10, "SCORE:", RED);
+    textout(50, 10, *score, RED);
+}*/
 
 
 void moveFigure(void)
@@ -304,9 +315,9 @@ void boardDrawer(void)
 
 void gameMove(int* figureOnScreen, int* counter, int* whichFigure, int* prevRotation)
 {
-    if (*counter % (FPS_RATE / 2) == 0)
+    if (*counter % MOVE_FREQUENCY == 0)
     {
-        *counter %= FPS_RATE / 2;
+        *counter %= MOVE_FREQUENCY;
         if (*figureOnScreen == 0)
         {
             *whichFigure = rand() % 7; /*for selecting a figure*/
@@ -408,6 +419,29 @@ void rotate(int whichFigure, int* prevRotation)
                     figureBoard[whereY + i][whereX + j] = pieces[whichFigure][postRotation][i][j];
             }
     *prevRotation = postRotation;
+    }
+}
+
+
+void fullLineDestroyer(void)
+{
+    int i, j, k, /* counters */
+    deleteLine; /* 1 means delete line, 0 means don't */
+    
+    for (i = 0; i < HEIGHT; i++)
+    {
+        deleteLine = 1;
+        for (j = 0; j < WIDTH; j++)
+        {
+            if (!gameBoard[i][j])
+                deleteLine = 0;
+        }
+        if (deleteLine)
+        {
+            for (k = i; k > 0; k--)
+                for(j = 0; j < WIDTH; j++)
+                    gameBoard[k][j] = gameBoard[k-1][j];
+        }
     }
 }
 
