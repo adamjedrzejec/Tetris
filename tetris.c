@@ -2,31 +2,31 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include "tetris.h"
+
 
 ///////////////////////////SETTINGS/////////////////////////////////////////////////////
 
-#define HEIGHT 10
-#define WIDTH 20
-const int FPS_RATE = 60;
-const int MOVE_FREQUENCY = 30; /* every how many frames occurs an automatic movement of the figure */
+#define HEIGHT 20
+#define WIDTH 10
+const int FPS_RATE = 16;
+const int MOVE_FREQUENCY = 8; /* every how many frames occurs an automatic movement of the figure */
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
-int gameBoard[HEIGHT][WIDTH] = {0}; /* creating the gameBoard array filled with 0's */
-int figureBoard[HEIGHT][WIDTH] = {0}; /* creating the figureBoard array filled with 0's */
+int gameBoard[HEIGHT][WIDTH]; /* creating the gameBoard array filled with 0's */
+int figureBoard[HEIGHT][WIDTH]; /* creating the figureBoard array filled with 0's */
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
 void screenCleaner(void);
-void drawBlock(int, int, int, int, int);
+void drawBlock(int, int, int, int, int, int);
 void boardBoundaryDrawer(int, int, int);
 void fillBoard(int, int, int);
-void testPrintCurrentPiece(int);
 void drawFigure(int);
-//void scoreDrawer(char*);
 void moveFigure(void);
 void moveLeft(void);
 void moveRight(void);
@@ -37,8 +37,6 @@ void figureToGameBoard(void);
 void gameOver(void);
 void boardDrawer(void);
 void gameMove(int*, int*, int*, int*);
-void isFigureOnScreen(int);
-void whichRotation(int);
 void rotate(int, int*);
 void fullLineDestroyer(void);
 
@@ -49,11 +47,9 @@ int main(int argc, char* argv[])
     int posWidth, posHeight, blockSide, centerTheBoard_X, centerTheBoard_Y, /* positioning squares and the board */
     figureOnScreen = 0, /*if figure is on the screen then 1, else 0*/
     rotation = 0, /* which of 4 variants of the figure is on the screen */
-    counter = 0,
+    moveDownCounter = 0, /* only for automatic movement */
     whichFigure = 0, /* which of the figures is on the screen */
-    //score = 0, /* actual score of a player */
     key; /* which key is pressed */
-    //char scoreTXT[6];
     
     srand(time(0));
     
@@ -79,46 +75,44 @@ int main(int argc, char* argv[])
         screenCleaner();
         boardBoundaryDrawer(blockSide, centerTheBoard_X, centerTheBoard_Y);
         
-        gameMove(&figureOnScreen, &counter, &whichFigure, &rotation);
+        gameMove(&figureOnScreen, &moveDownCounter, &whichFigure, &rotation);
+
         fullLineDestroyer();
-        //isFigureOnScreen(figureOnScreen); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
         
         fillBoard(blockSide, centerTheBoard_X, centerTheBoard_Y);
-        //sprintf(scoreTXT, "%d", score);
-        //scoreDrawer(&scoreTXT);
         updateScreen();
         
         if ((key = pollkey()) != -1) //checks if any key has been pressed, if no, then false
         {
-            if (key == SDLK_ESCAPE)
-                exit(3);
-            else if (key == SDLK_LEFT)
-            {
-                if (!checkLeftCollision())
-                    moveLeft();
-            }
-            else if (key == SDLK_RIGHT)
-            {
-                if (!checkRightCollision())
-                    moveRight();
-            }
-            else if (key == SDLK_DOWN)
-            {
-                if (!checkCollision())
-                    moveFigure();
-            }
-            else if (key == SDLK_UP)
-            {
-                isFigureOnScreen(whichFigure);
-                whichRotation(rotation);
-            }
-            else if (key == SDLK_SPACE && figureOnScreen == 1)
+            if (key == SDLK_SPACE && figureOnScreen == 1)
             {
                 rotate (whichFigure, &rotation);
             }
         }
+	if (isKeyDown(SDLK_ESCAPE))
+	    exit(3);
+	if (isKeyDown(SDLK_LEFT))
+	{
+	    if (!checkLeftCollision())
+		moveLeft();
+	}
+	if (isKeyDown(SDLK_RIGHT))
+	{
+	    if (!checkRightCollision())
+		moveRight();
+	}
+	if (isKeyDown(SDLK_DOWN))
+	{
+	    if (!checkCollision())
+		moveFigure();
+	}
+	if (isKeyDown(SDLK_UP))
+	{
+	    boardDrawer();
+	}
+	
         SDL_Delay(1000 / FPS_RATE);
-        counter++;
+        moveDownCounter++;
     }
     return 0;
 }
@@ -139,10 +133,9 @@ void boardBoundaryDrawer(int blockSide, int centerTheBoard_X, int centerTheBoard
 }
 
 
-void drawBlock(int where_x, int where_y, int blockSide, int centerTheBoard_X, int centerTheBoard_Y)
+void drawBlock(int where_x, int where_y, int blockSide, int centerTheBoard_X, int centerTheBoard_Y, int color)
 {
-    
-    filledRect(centerTheBoard_X + where_x * blockSide + 1, centerTheBoard_Y + where_y * blockSide + 1, centerTheBoard_X + (where_x+1) * blockSide - 1, centerTheBoard_Y + (where_y+1) * blockSide - 1, WHITE);
+    filledRect(centerTheBoard_X + where_x * blockSide + 1, centerTheBoard_Y + where_y * blockSide + 1, centerTheBoard_X + (where_x+1) * blockSide - 1, centerTheBoard_Y + (where_y+1) * blockSide - 1, color);
 }
 
 
@@ -153,9 +146,11 @@ void fillBoard(int blockSide, int centerTheBoard_X, int centerTheBoard_Y)
         for (j = 0; j < WIDTH; j++)
         {
             if (gameBoard[i][j])
-                drawBlock(j, i, blockSide, centerTheBoard_X, centerTheBoard_Y);
-            if (figureBoard[i][j])
-                drawBlock(j, i, blockSide, centerTheBoard_X, centerTheBoard_Y);
+                drawBlock(j, i, blockSide, centerTheBoard_X, centerTheBoard_Y, CYAN);
+            if (figureBoard[i][j] == 1)
+                drawBlock(j, i, blockSide, centerTheBoard_X, centerTheBoard_Y, WHITE);
+	    else if (figureBoard[i][j] == 2)
+		drawBlock(j, i, blockSide, centerTheBoard_X, centerTheBoard_Y, WHITE);
         }
 }
 
@@ -168,16 +163,7 @@ void drawFigure(int whichFigure)
         for (j = 0; j < 4; j++) /* 4 is a piece side */
             if (pieces[whichFigure][0][i][j])
                 figureBoard[i][WIDTH/2 - 1 + j] = pieces[whichFigure][0][i][j];
-            
-    //testPrintCurrentPiece(whichFigure); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
 }
-
-
-/*void scoreDrawer(char* score)
-{
-    textout(20, 10, "SCORE:", RED);
-    textout(50, 10, *score, RED);
-}*/
 
 
 void moveFigure(void)
@@ -341,9 +327,7 @@ void gameMove(int* figureOnScreen, int* counter, int* whichFigure, int* prevRota
 void rotate(int whichFigure, int* prevRotation)
 {
     int i, j, /* counters */
-    prevX, prevY, /* position of '2' in a piece before rotation */
     postX, postY, /* position of '2' in a rotated piece */
-    deltaX, deltaY, /* differences between position of '2' integer in pieces */
     whereX, whereY, /* top left corner of a rotated piece to draw */
     maxX = 0, maxY = 0, /* maximum x and y !!!indexes!!! in a rotated piece willed with non-zero */
     postRotation, /* index of a rotation of a piece after that rotation */
@@ -351,47 +335,38 @@ void rotate(int whichFigure, int* prevRotation)
     
     postRotation = *prevRotation + 1;
     postRotation %= 4; /* 4 is a number of variants for each figure */
-    //whichRotation(postRotation); /* TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST   TEST */
-    
-    
-    for (i = 0; i < HEIGHT; i++)
-        for (j = 0; j < WIDTH; j++)
-            if (figureBoard[i][j] == 2)
-            {
-                whereX = j;
-                whereY = i;
-                i = HEIGHT;
-                j = WIDTH;
-            }
     
     
     for (i = 0; i < 4; i++) /* 4 is a piece side */
         for (j = 0; j < 4; j++) /* 4 is a piece side */
         {
-            if (pieces[whichFigure][*prevRotation][i][j] == 2)
-            {
-                prevX = j;
-                prevY = i;
-            }
             if (pieces[whichFigure][postRotation][i][j] == 2)
             {
                 postX = j;
                 postY = i;
             }
         }
-    deltaX = postX - prevX;
-    deltaY = postY - prevY;
-    //drawRotatedFigure(whereX - deltaX, whereY - deltaY, whichFigure, postRotation);
-    
-    whereX = whereX - prevX - deltaX;
-    whereY = whereY - prevY - deltaY;
-    
-    /* collision detector */
-    for (i = 0; i < 4; i++) /* 4 is a piece side */
-        for (j = 0; j < 4; j++) /* 4 is a piece side */
-                if (gameBoard[whereY + i][whereX + j])
-                    collision = 1;
-    
+
+        
+    for (i = 0; i < HEIGHT; i++)
+        for (j = 0; j < WIDTH; j++)
+            if (figureBoard[i][j] == 2)
+            {
+                whereX = j - postX;
+                whereY = i - postY;
+                i = HEIGHT; /* condition for exiting from the double for loop */
+                j = WIDTH; /* condition for exiting from the double for loop */
+            }
+
+    if (whereX >= 0 && whereY >= 0) /* not allowing the last if in this if to get to position of gameBoard that does not exist */
+    {
+        /* collision detector */
+        for (i = 0; i < 4; i++) /* 4 is a piece side */
+            for (j = 0; j < 4; j++) /* 4 is a piece side */
+                if (pieces[whichFigure][postRotation][i][j])
+                    if (gameBoard[whereY + i][whereX + j])
+                        collision = 1;
+    }
     
     /* maxX and maxY detector */
     for (i = 0; i < 4; i++) /* 4 is a piece side */
@@ -443,26 +418,4 @@ void fullLineDestroyer(void)
                     gameBoard[k][j] = gameBoard[k-1][j];
         }
     }
-}
-
-/* TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS   TESTS */
-
-void testPrintCurrentPiece(int whichFigure) {
-    printf("=====WHICH FIGURE=====\n");
-    printf("Current figure: %d\n", whichFigure);
-    printf("=====WHICH FIGURE=====\n");
-}
-
-
-void isFigureOnScreen(int figureOnScreen) {
-    printf("=====IS FIGURE ON SCREEN=====\n");
-    printf("FigureOnScreen: %d\n", figureOnScreen);
-    printf("=====IS FIGURE ON SCREEN=====\n");
-}
-
-
-void whichRotation(int rotation) {
-    printf("=====ROTATION=====\n");
-    printf("Rotation: %d\n", rotation);
-    printf("=====ROTATION=====\n");
 }

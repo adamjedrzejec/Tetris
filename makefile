@@ -1,14 +1,14 @@
 all: tetris
 
 tetris: tetris.o primlib.o
-	gcc -g $^ -o $@ -lm -lSDL -lpthread -lSDL_gfx
+	gcc -fsanitize=address -g $^ -o $@ -lm -lSDL -lpthread -lSDL_gfx
 
 .c.o: 
-	gcc -g -Wall -pedantic -std=c99 -c -D_REENTRANT $<
+	gcc -fsanitize=address -g -Wall -pedantic -std=c99 -c -D_REENTRANT $<
 
 primlib.o: primlib.c primlib.h
 
-tetris.o: tetris.c primlib.h
+tetris.o: tetris.c primlib.h tetris.h
 
 clean:
 	-rm primlib.o tetris.o tetris
